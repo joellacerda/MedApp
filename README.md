@@ -10,8 +10,6 @@ Para rodar este projeto, você precisará ter instalado na sua máquina:
 - **MySQL Server** (rodando localmente)
 - **Git** (opcional, para clonagem)
 
----
-
 ## 🚀 Como Rodar a Aplicação
 
 Siga o passo a passo abaixo para configurar o ambiente.
@@ -37,8 +35,6 @@ Siga o passo a passo abaixo para configurar o ambiente.
 > });
 > ```
 
----
-
 ### Passo 2: Iniciar o Backend (Servidor)
 
 Abra um terminal na pasta raiz do projeto e execute:
@@ -53,3 +49,40 @@ npm install
 # Rodar o servidor
 node index.js
 ```
+
+Se tudo estiver correto, você verá a mensagem: `Servidor rodando na porta 3001`
+
+### Passo 3: Iniciar o Frontend (Cliente)
+
+Abra um novo terminal na pasta raiz do projeto e execute:
+
+```bash
+# Entrar na pasta do cliente
+cd client
+
+# Instalar as dependências
+npm install
+
+# Iniciar a aplicação React
+npm start
+```
+
+O navegador deve abrir automaticamente no endereço `http://localhost:3000`.
+
+## 🛠️ Tecnologias Utilizadas
+
+- Frontend: React.js, Axios, CSS Modules.
+- Backend: Node.js, Express.
+- Banco de Dados: MySQL (Driver mysql2).
+
+## ⚙️ Funcionalidades Principais
+
+1. Pacientes: CRUD completo, listagem com filtros e visualização de detalhes (Convênio/Particular).
+2. Médicos: Cadastro e gerenciamento com especialidades dinâmicas.
+3. Agendamento: Marcação de consultas validando chaves estrangeiras.
+4. Atendimento: Finalização de consulta com inserção múltipla de prescrições e registro financeiro.
+5. Reagendamento/Cancelamento: Operações de Update e Delete em consultas pendentes.
+
+## 👨‍💻 Autores
+
+Desenvolvido por Eduardo Perotti, Joel Lacerda e Marcus Vinícius.
