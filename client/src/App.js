@@ -779,7 +779,26 @@ function App() {
                     key={m.Medico_ID}
                     style={{ borderBottom: "1px solid #eee" }}
                   >
-                    <td style={{ padding: "10px" }}>{m.Nome}</td>
+                    <td style={{ padding: "10px" }}>
+                      <span
+                        style={{
+                          fontWeight: m.Qtd_Consultas > 0 ? "bold" : "normal",
+                        }}
+                      >
+                        {m.Nome}
+                      </span>
+                      {m.Qtd_Consultas > 0 && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "green",
+                            marginLeft: "5px",
+                          }}
+                        >
+                          ({m.Qtd_Consultas} atd.)
+                        </span>
+                      )}
+                    </td>{" "}
                     <td>{m.CRM}</td>
                     <td>
                       <span
@@ -942,7 +961,7 @@ function App() {
                     </div>
 
                     <div>
-                      {c.Paciente} (Dr. {c.Medico})
+                      {c.Paciente} ({c.Medico})
                     </div>
 
                     {!c.Pgto_ID && (

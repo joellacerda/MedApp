@@ -171,9 +171,12 @@ app.delete("/pacientes/:id/dependentes/:nome", (req, res) => {
 // --- MÉDICOS ---
 app.get("/medicos", (req, res) => {
   const sql = `
-        SELECT m.Medico_ID, m.Nome, m.CRM, e.Nome as Especialidade
+        SELECT m.Medico_ID, m.Nome, m.CRM, e.Nome as Especialidade,
+               COUNT(c.Consulta_ID) as Qtd_Consultas
         FROM MEDICO m
         JOIN ESPECIALIDADE e ON m.Espec_ID = e.Espec_ID
+        LEFT JOIN CONSULTA c ON m.Medico_ID = c.Medico_ID
+        GROUP BY m.Medico_ID
     `;
   db.query(sql, (err, result) => {
     if (err) return res.status(500).send(err);
