@@ -82,19 +82,82 @@ app.put("/pacientes/:id", (req, res) => {
 
 app.delete("/pacientes/:id", (req, res) => {
   const id = req.params.id;
-  const sql = "DELETE FROM PACIENTE WHERE Paciente_ID = ?";
-  db.query(sql, [id], (err, result) => {
-    if (err)
-      return res.status(500).send({
-        error: "Erro ao deletar (verifique se há consultas pendentes).",
-      });
-    res.send({ msg: "Paciente excluído!" });
+
+  // 1. Remove Dependentes
+  db.query("DELETE FROM DEPENDENTE WHERE Paciente_ID = ?", [id], (err1) => {
+    if (err1) return res.status(500).send(err1);
+
+    // 2. Remove Especialização (Conveniado)
+    db.query(
+      "DELETE FROM PACIENTE_CONVENIADO WHERE Paciente_ID = ?",
+      [id],
+      (err2) => {
+        if (err2) return res.status(500).send(err2);
+
+        // 3. Remove Especialização (Particular)
+        db.query(
+          "DELETE FROM PACIENTE_PARTICULAR WHERE Paciente_ID = ?",
+          [id],
+          (err3) => {
+            if (err3) return res.status(500).send(err3);
+
+            // 4. Finalmente remove o Paciente
+            // OBS: Se houver CONSULTAS, ainda dará erro (a menos que apague consultas antes ou use Cascade no banco)
+            db.query(
+              "DELETE FROM PACIENTE WHERE Paciente_ID = ?",
+              [id],
+              (err4) => {
+                if (err4)
+                  return res.status(500).send({
+                    error:
+                      "Erro ao deletar. Verifique se o paciente possui consultas agendadas.",
+                  });
+                res.send({ msg: "Paciente excluído com sucesso!" });
+              }
+            );
+          }
+        );
+      }
+    );
+  });
+});
+
+// --- DEPENDENTES ---
+app.get("/pacientes/:id/dependentes", (req, res) => {
+  const id = req.params.id;
+  db.query(
+    "SELECT * FROM DEPENDENTE WHERE Paciente_ID = ?",
+    [id],
+    (err, result) => {
+      if (err) return res.status(500).send(err);
+      res.send(result);
+    }
+  );
+});
+
+app.post("/pacientes/:id/dependentes", (req, res) => {
+  const id = req.params.id;
+  const { nome, data_nascimento } = req.body;
+  const sql =
+    "INSERT INTO DEPENDENTE (Paciente_ID, Nome_Dependente, Data_Nascimento) VALUES (?, ?, ?)";
+  db.query(sql, [id, nome, data_nascimento], (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send({ msg: "Dependente adicionado!" });
+  });
+});
+
+app.delete("/pacientes/:id/dependentes/:nome", (req, res) => {
+  const { id, nome } = req.params;
+  const sql =
+    "DELETE FROM DEPENDENTE WHERE Paciente_ID = ? AND Nome_Dependente = ?";
+  db.query(sql, [id, nome], (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send({ msg: "Dependente removido!" });
   });
 });
 
 // --- MÉDICOS ---
 app.get("/medicos", (req, res) => {
-  // Join para trazer o nome da Especialidade
   const sql = `
         SELECT m.Medico_ID, m.Nome, m.CRM, e.Nome as Especialidade
         FROM MEDICO m

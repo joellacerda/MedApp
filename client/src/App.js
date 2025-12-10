@@ -17,6 +17,13 @@ function App() {
   const [editandoMedico, setEditandoMedico] = useState(null);
   const [reagendandoConsulta, setReagendandoConsulta] = useState(null);
 
+  // --- DEPENDENTES ---
+  const [listaDependentes, setListaDependentes] = useState([]);
+  const [formDependente, setFormDependente] = useState({
+    nome: "",
+    data_nascimento: "",
+  });
+
   // --- FORMULÁRIOS ---
   const [formPaciente, setFormPaciente] = useState({
     nome: "",
@@ -118,11 +125,11 @@ function App() {
       await axios.delete(`${API_URL}/pacientes/${id}`);
       fetchPacientes();
     } catch (e) {
-      alert("Erro ao excluir. Verifique se há dependências.");
+      alert(e.response?.data?.error || "Erro ao excluir.");
     }
   };
 
-  const prepararEdicaoPaciente = (p) => {
+  const prepararEdicaoPaciente = async (p) => {
     setEditandoPaciente(p.Paciente_ID);
     setFormPaciente({
       nome: p.Nome,
@@ -131,6 +138,49 @@ function App() {
       tipo: p.Nome_Convenio ? "Conveniado" : "Particular",
       extra: {},
     });
+
+    try {
+      const res = await axios.get(
+        `${API_URL}/pacientes/${p.Paciente_ID}/dependentes`
+      );
+      setListaDependentes(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // --- AÇÕES DEPENDENTES ---
+  const adicionarDependente = async () => {
+    if (!formDependente.nome || !formDependente.data_nascimento)
+      return alert("Preencha os dados do dependente");
+    try {
+      await axios.post(
+        `${API_URL}/pacientes/${editandoPaciente}/dependentes`,
+        formDependente
+      );
+      const res = await axios.get(
+        `${API_URL}/pacientes/${editandoPaciente}/dependentes`
+      );
+      setListaDependentes(res.data);
+      setFormDependente({ nome: "", data_nascimento: "" });
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const removerDependente = async (nome) => {
+    if (!window.confirm("Remover este dependente?")) return;
+    try {
+      await axios.delete(
+        `${API_URL}/pacientes/${editandoPaciente}/dependentes/${nome}`
+      );
+      const res = await axios.get(
+        `${API_URL}/pacientes/${editandoPaciente}/dependentes`
+      );
+      setListaDependentes(res.data);
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   // --- AÇÕES MÉDICO ---
@@ -208,7 +258,7 @@ function App() {
     }
   };
 
-  // --- FINALIZAR ATENDIMENTO (MÚLTIPLOS ITENS) ---
+  // --- FINALIZAR ATENDIMENTO ---
   const handleAddMedicamento = () =>
     setFormFinalizar({
       ...formFinalizar,
@@ -310,7 +360,7 @@ function App() {
         {aba === "home" && (
           <div style={cardStyle}>
             <h1>Bem-vindo</h1>
-            <p>Sistema de Gestão Clínica v2.6</p>
+            <p>Sistema de Gestão Clínica v3.0</p>
           </div>
         )}
 
@@ -432,6 +482,98 @@ function App() {
                     />
                   </div>
                 )}
+
+                {/* --- ÁREA DE DEPENDENTES (SÓ APARECE AO EDITAR) --- */}
+                {editandoPaciente && (
+                  <div
+                    style={{
+                      marginTop: "20px",
+                      borderTop: "1px solid #ddd",
+                      paddingTop: "10px",
+                    }}
+                  >
+                    <h5>👶 Dependentes</h5>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        alignItems: "center",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <input
+                        placeholder="Nome Dependente"
+                        value={formDependente.nome}
+                        onChange={(e) =>
+                          setFormDependente({
+                            ...formDependente,
+                            nome: e.target.value,
+                          })
+                        }
+                        style={{ ...inputStyle, marginBottom: 0 }}
+                      />
+                      <input
+                        type="date"
+                        value={formDependente.data_nascimento}
+                        onChange={(e) =>
+                          setFormDependente({
+                            ...formDependente,
+                            data_nascimento: e.target.value,
+                          })
+                        }
+                        style={{ ...inputStyle, marginBottom: 0 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={adicionarDependente}
+                        style={{ ...btnSmall("green"), padding: "10px" }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <ul style={{ listStyle: "none", padding: 0 }}>
+                      {listaDependentes.map((dep, idx) => (
+                        <li
+                          key={idx}
+                          style={{
+                            background: "#eee",
+                            padding: "5px 10px",
+                            marginBottom: "5px",
+                            borderRadius: "3px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <span>
+                            {dep.Nome_Dependente} (
+                            {new Date(dep.Data_Nascimento).toLocaleDateString()}
+                            )
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removerDependente(dep.Nome_Dependente)
+                            }
+                            style={{
+                              border: "none",
+                              color: "red",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            X
+                          </button>
+                        </li>
+                      ))}
+                      {listaDependentes.length === 0 && (
+                        <li style={{ color: "#aaa", fontSize: "12px" }}>
+                          Nenhum dependente cadastrado.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button type="submit" style={btnPrimary}>
                     {editandoPaciente ? "Atualizar" : "Salvar"}
