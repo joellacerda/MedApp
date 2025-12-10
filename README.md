@@ -73,7 +73,7 @@ O navegador deve abrir automaticamente no endereço `http://localhost:3000`.
 
 - Frontend: React.js, Axios, CSS Modules.
 - Backend: Node.js, Express.
-- Banco de Dados: MySQL (Driver mysql2).
+- Banco de Dados: MySQL (Driver `mysql2`).
 
 ## ⚙️ Funcionalidades Principais
 
