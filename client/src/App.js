@@ -463,33 +463,78 @@ function App() {
                 <tr style={{ background: "#eee" }}>
                   <th>Nome</th>
                   <th>CPF</th>
+                  <th>Telefone</th>
+                  <th>Tipo / Detalhes</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {pacientes.map((p) => (
-                  <tr
-                    key={p.Paciente_ID}
-                    style={{ borderBottom: "1px solid #eee" }}
-                  >
-                    <td style={{ padding: "10px" }}>{p.Nome}</td>
-                    <td>{p.CPF}</td>
-                    <td>
-                      <button
-                        onClick={() => prepararEdicaoPaciente(p)}
-                        style={btnSmall("orange")}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => deletarPaciente(p.Paciente_ID)}
-                        style={{ ...btnSmall("red"), marginLeft: "5px" }}
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {pacientes.map((p) => {
+                  const isConvenio = p.Nome_Convenio != null;
+                  return (
+                    <tr
+                      key={p.Paciente_ID}
+                      style={{ borderBottom: "1px solid #eee" }}
+                    >
+                      <td style={{ padding: "10px" }}>{p.Nome}</td>
+                      <td>{p.CPF}</td>
+                      <td>{p.Telefone}</td>
+                      <td>
+                        {isConvenio ? (
+                          <span
+                            style={{
+                              ...badgeStyle,
+                              background: "#e8f5e9",
+                              color: "#2e7d32",
+                              border: "1px solid #c8e6c9",
+                              cursor: "pointer",
+                            }}
+                            title={`Convênio: ${p.Nome_Convenio} | Carteira: ${p.Num_Carteira}`}
+                            onClick={() =>
+                              alert(
+                                `🏥 CONVÊNIO: ${p.Nome_Convenio}\n💳 CARTEIRA: ${p.Num_Carteira}`
+                              )
+                            }
+                          >
+                            Conveniado
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              ...badgeStyle,
+                              background: "#e3f2fd",
+                              color: "#1565c0",
+                              border: "1px solid #bbdefb",
+                              cursor: "pointer",
+                            }}
+                            title={`Limite: R$ ${p.Limite_Credito}`}
+                            onClick={() =>
+                              alert(
+                                `💲 PARTICULAR\n💰 Limite de Crédito: R$ ${p.Limite_Credito}`
+                              )
+                            }
+                          >
+                            Particular
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => prepararEdicaoPaciente(p)}
+                          style={btnSmall("orange")}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deletarPaciente(p.Paciente_ID)}
+                          style={{ ...btnSmall("red"), marginLeft: "5px" }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -757,7 +802,7 @@ function App() {
                       <strong>{new Date(c.Data_Hora).toLocaleString()}</strong>
                     </div>
                     <div>
-                      {c.Paciente} (Dr. {c.Medico})
+                      {c.Paciente} ({c.Medico})
                     </div>
 
                     {!c.Pgto_ID && (

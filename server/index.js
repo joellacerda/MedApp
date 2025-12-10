@@ -25,7 +25,6 @@ app.get("/pacientes", (req, res) => {
         FROM PACIENTE p
         LEFT JOIN PACIENTE_CONVENIADO pc ON p.Paciente_ID = pc.Paciente_ID
         LEFT JOIN PACIENTE_PARTICULAR pp ON p.Paciente_ID = pp.Paciente_ID
-        ORDER BY p.Nome ASC
     `;
 
   let params = [];
@@ -33,6 +32,8 @@ app.get("/pacientes", (req, res) => {
     sql += " WHERE p.Nome LIKE ? OR p.CPF LIKE ?";
     params = [`%${busca}%`, `%${busca}%`];
   }
+
+  sql += " ORDER BY p.Nome ASC";
 
   db.query(sql, params, (err, result) => {
     if (err) return res.status(500).send(err);
