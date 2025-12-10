@@ -6,11 +6,19 @@ const API_URL = "http://localhost:3001";
 
 function App() {
   const [aba, setAba] = useState("home");
+
   const [pacientes, setPacientes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
   const [consultas, setConsultas] = useState([]);
+
+  // Relatórios (Novos Estados)
+  const [relatorioFaturamento, setRelatorioFaturamento] = useState([]);
+  const [relatorioVip, setRelatorioVip] = useState([]);
+
+  // Filtros e Ordenação
   const [busca, setBusca] = useState("");
+  const [ordenacao, setOrdenacao] = useState({ campo: "Nome", direcao: "ASC" });
 
   // --- ESTADOS DE EDIÇÃO ---
   const [editandoPaciente, setEditandoPaciente] = useState(null);
@@ -69,10 +77,13 @@ function App() {
       fetchPacientes();
     }
     if (aba === "atendimento") fetchConsultas();
-  }, [aba, busca]);
+    if (aba === "relatorios") fetchRelatorios();
+  }, [aba, busca, ordenacao]);
 
   const fetchPacientes = async () => {
-    const res = await axios.get(`${API_URL}/pacientes?busca=${busca}`);
+    const res = await axios.get(
+      `${API_URL}/pacientes?busca=${busca}&ordem=${ordenacao.campo}&direcao=${ordenacao.direcao}`
+    );
     setPacientes(res.data);
   };
   const fetchMedicos = async () => {
@@ -86,6 +97,29 @@ function App() {
   const fetchConsultas = async () => {
     const res = await axios.get(`${API_URL}/consultas`);
     setConsultas(res.data);
+  };
+  const fetchRelatorios = async () => {
+    try {
+      const resFat = await axios.get(`${API_URL}/relatorios/faturamento`);
+      setRelatorioFaturamento(resFat.data);
+      const resVip = await axios.get(`${API_URL}/relatorios/consultas-vip`);
+      setRelatorioVip(resVip.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // --- FUNÇÃO DE ORDENAR ---
+  const handleOrdenar = (campo) => {
+    const novaDirecao =
+      ordenacao.campo === campo && ordenacao.direcao === "ASC" ? "DESC" : "ASC";
+    setOrdenacao({ campo, direcao: novaDirecao });
+  };
+
+  const renderSeta = (campo) => {
+    if (ordenacao.campo !== campo)
+      return <span style={{ opacity: 0.3 }}> ↕</span>;
+    return ordenacao.direcao === "ASC" ? " ⬆" : " ⬇";
   };
 
   // --- AÇÕES PACIENTE ---
@@ -354,6 +388,12 @@ function App() {
         >
           ✅ Atendimento
         </button>
+        <button
+          onClick={() => setAba("relatorios")}
+          style={btnMenu(aba === "relatorios")}
+        >
+          📊 Relatórios
+        </button>
       </nav>
 
       <main style={{ flex: 1, padding: "30px", overflowY: "auto" }}>
@@ -432,8 +472,9 @@ function App() {
                     style={inputStyle}
                     disabled={!!editandoPaciente}
                   >
-                    <option value="Particular">Particular</option>
-                    <option value="Conveniado">Conveniado</option>
+                    {" "}
+                    <option value="Particular">Particular</option>{" "}
+                    <option value="Conveniado">Conveniado</option>{" "}
                   </select>
                 </div>
                 {!editandoPaciente && formPaciente.tipo === "Particular" && (
@@ -482,8 +523,6 @@ function App() {
                     />
                   </div>
                 )}
-
-                {/* --- ÁREA DE DEPENDENTES (SÓ APARECE AO EDITAR) --- */}
                 {editandoPaciente && (
                   <div
                     style={{
@@ -502,7 +541,7 @@ function App() {
                       }}
                     >
                       <input
-                        placeholder="Nome Dependente"
+                        placeholder="Nome"
                         value={formDependente.nome}
                         onChange={(e) =>
                           setFormDependente({
@@ -537,44 +576,30 @@ function App() {
                           key={idx}
                           style={{
                             background: "#eee",
-                            padding: "5px 10px",
+                            padding: "5px",
                             marginBottom: "5px",
-                            borderRadius: "3px",
                             display: "flex",
                             justifyContent: "space-between",
                           }}
                         >
-                          <span>
-                            {dep.Nome_Dependente} (
-                            {new Date(dep.Data_Nascimento).toLocaleDateString()}
-                            )
-                          </span>
+                          <span>{dep.Nome_Dependente}</span>
                           <button
                             type="button"
                             onClick={() =>
                               removerDependente(dep.Nome_Dependente)
                             }
-                            style={{
-                              border: "none",
-                              color: "red",
-                              cursor: "pointer",
-                              fontWeight: "bold",
-                            }}
+                            style={{ border: "none", color: "red" }}
                           >
                             X
                           </button>
                         </li>
                       ))}
-                      {listaDependentes.length === 0 && (
-                        <li style={{ color: "#aaa", fontSize: "12px" }}>
-                          Nenhum dependente cadastrado.
-                        </li>
-                      )}
                     </ul>
                   </div>
                 )}
-
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div
+                  style={{ display: "flex", gap: "10px", marginTop: "15px" }}
+                >
                   <button type="submit" style={btnPrimary}>
                     {editandoPaciente ? "Atualizar" : "Salvar"}
                   </button>
@@ -603,80 +628,50 @@ function App() {
             <table style={tableStyle}>
               <thead>
                 <tr style={{ background: "#eee" }}>
-                  <th>Nome</th>
-                  <th>CPF</th>
+                  {/* CABEÇALHOS CLICÁVEIS PARA ORDENAR */}
+                  <th
+                    onClick={() => handleOrdenar("Nome")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    Nome {renderSeta("Nome")}
+                  </th>
+                  <th
+                    onClick={() => handleOrdenar("CPF")}
+                    style={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    CPF {renderSeta("CPF")}
+                  </th>
                   <th>Telefone</th>
                   <th>Tipo / Detalhes</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {pacientes.map((p) => {
-                  const isConvenio = p.Nome_Convenio != null;
-                  return (
-                    <tr
-                      key={p.Paciente_ID}
-                      style={{ borderBottom: "1px solid #eee" }}
-                    >
-                      <td style={{ padding: "10px" }}>{p.Nome}</td>
-                      <td>{p.CPF}</td>
-                      <td>{p.Telefone}</td>
-                      <td>
-                        {isConvenio ? (
-                          <span
-                            style={{
-                              ...badgeStyle,
-                              background: "#e8f5e9",
-                              color: "#2e7d32",
-                              border: "1px solid #c8e6c9",
-                              cursor: "pointer",
-                            }}
-                            title={`Convênio: ${p.Nome_Convenio} | Carteira: ${p.Num_Carteira}`}
-                            onClick={() =>
-                              alert(
-                                `🏥 CONVÊNIO: ${p.Nome_Convenio}\n💳 CARTEIRA: ${p.Num_Carteira}`
-                              )
-                            }
-                          >
-                            Conveniado
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              ...badgeStyle,
-                              background: "#e3f2fd",
-                              color: "#1565c0",
-                              border: "1px solid #bbdefb",
-                              cursor: "pointer",
-                            }}
-                            title={`Limite: R$ ${p.Limite_Credito}`}
-                            onClick={() =>
-                              alert(
-                                `💲 PARTICULAR\n💰 Limite de Crédito: R$ ${p.Limite_Credito}`
-                              )
-                            }
-                          >
-                            Particular
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => prepararEdicaoPaciente(p)}
-                          style={btnSmall("orange")}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => deletarPaciente(p.Paciente_ID)}
-                          style={{ ...btnSmall("red"), marginLeft: "5px" }}
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {pacientes.map((p) => (
+                  <tr
+                    key={p.Paciente_ID}
+                    style={{ borderBottom: "1px solid #eee" }}
+                  >
+                    <td style={{ padding: "10px" }}>{p.Nome}</td>
+                    <td>{p.CPF}</td>
+                    <td>{p.Telefone}</td>
+                    <td>{p.Nome_Convenio ? "Conveniado" : "Particular"}</td>
+                    <td>
+                      <button
+                        onClick={() => prepararEdicaoPaciente(p)}
+                        style={btnSmall("orange")}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => deletarPaciente(p.Paciente_ID)}
+                        style={{ ...btnSmall("red"), marginLeft: "5px" }}
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -927,43 +922,33 @@ function App() {
                 {consultas.map((c) => (
                   <div
                     key={c.Consulta_ID}
-                    style={{
-                      padding: "15px",
-                      border: "1px solid #ddd",
-                      marginBottom: "10px",
-                      borderRadius: "8px",
-                      background: c.Pgto_ID ? "#e8f5e9" : "#fff",
-                      cursor: "pointer",
-                    }}
                     onClick={() => {
                       if (!reagendandoConsulta)
                         setConsultaSelecionada(c.Consulta_ID);
                     }}
+                    style={{
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      marginBottom: "10px",
+                      cursor: "pointer",
+                      background: c.Pgto_ID ? "#e8f5e9" : "#fff",
+                    }}
                   >
                     <div>
                       <strong>{new Date(c.Data_Hora).toLocaleString()}</strong>
+                      <span style={{ marginLeft: "10px", color: "#555" }}>
+                        📍 Sala: {c.Sala || "N/A"}
+                      </span>
                     </div>
+
                     <div>
-                      {c.Paciente} ({c.Medico})
+                      {c.Paciente} (Dr. {c.Medico})
                     </div>
 
                     {!c.Pgto_ID && (
-                      <div
-                        style={{
-                          marginTop: "10px",
-                          display: "flex",
-                          gap: "5px",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <div style={{ marginTop: "5px" }}>
                         {reagendandoConsulta === c.Consulta_ID ? (
-                          <div
-                            style={{
-                              background: "#fdfefe",
-                              padding: "5px",
-                              border: "1px solid #ccc",
-                            }}
-                          >
+                          <div>
                             <input
                               type="date"
                               onChange={(e) =>
@@ -1001,32 +986,15 @@ function App() {
                           <>
                             <button
                               onClick={() =>
-                                setConsultaSelecionada(c.Consulta_ID)
-                              }
-                              style={{
-                                ...btnSmall("#3498db"),
-                                padding: "5px 10px",
-                              }}
-                            >
-                              Atender
-                            </button>
-                            <button
-                              onClick={() =>
                                 setReagendandoConsulta(c.Consulta_ID)
                               }
-                              style={{
-                                ...btnSmall("orange"),
-                                padding: "5px 10px",
-                              }}
+                              style={btnSmall("orange")}
                             >
                               Reagendar
                             </button>
                             <button
                               onClick={() => cancelarConsulta(c.Consulta_ID)}
-                              style={{
-                                ...btnSmall("red"),
-                                padding: "5px 10px",
-                              }}
+                              style={{ ...btnSmall("red"), marginLeft: "5px" }}
                             >
                               Cancelar
                             </button>
@@ -1035,9 +1003,9 @@ function App() {
                       </div>
                     )}
                     {c.Pgto_ID && (
-                      <div style={{ color: "green", fontWeight: "bold" }}>
-                        ✓ Finalizada (Clique para ver)
-                      </div>
+                      <span style={{ color: "green", fontSize: "12px" }}>
+                        ✓ Pago
+                      </span>
                     )}
                   </div>
                 ))}
@@ -1270,6 +1238,75 @@ function App() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- RELATÓRIOS (NOVA ABA) --- */}
+        {aba === "relatorios" && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "20px",
+            }}
+          >
+            {/* Relatório 1: Group By */}
+            <div style={cardStyle}>
+              <h3>📊 Faturamento por Método</h3>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{ background: "#e3f2fd" }}>
+                    <th>Método</th>
+                    <th>Total Arrecadado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatorioFaturamento.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={{ padding: "10px" }}>{item.Metodo}</td>
+                      <td style={{ fontWeight: "bold", color: "green" }}>
+                        R$ {item.Total}
+                      </td>
+                    </tr>
+                  ))}
+                  {relatorioFaturamento.length === 0 && (
+                    <tr>
+                      <td colSpan="2">Sem dados.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Relatório 2: Quantificadores */}
+            <div style={cardStyle}>
+              <h3>💎 Consultas "VIP"</h3>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{ background: "#fff3e0" }}>
+                    <th>Data</th>
+                    <th>Paciente</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatorioVip.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={{ padding: "10px" }}>
+                        {new Date(item.Data_Hora).toLocaleDateString()}
+                      </td>
+                      <td>{item.Paciente}</td>
+                      <td style={{ fontWeight: "bold" }}>R$ {item.Valor}</td>
+                    </tr>
+                  ))}
+                  {relatorioVip.length === 0 && (
+                    <tr>
+                      <td colSpan="3">Nenhuma consulta encontrada.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

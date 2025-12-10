@@ -18,6 +18,17 @@ const db = mysql.createPool({
 // --- PACIENTES ---
 app.get("/pacientes", (req, res) => {
   const busca = req.query.busca;
+  // Recebe ordem e direção do frontend, ou usa padrão
+  const ordem = req.query.ordem || "Nome";
+  const direcao = req.query.direcao || "ASC";
+
+  // Whitelist para evitar SQL Injection na ordenação
+  const colunasPermitidas = ["Nome", "CPF"];
+  const colunaOrdenacao = colunasPermitidas.includes(ordem)
+    ? `p.${ordem}`
+    : "p.Nome";
+  const direcaoOrdenacao = direcao.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
   let sql = `
         SELECT p.*,
                pc.Num_Carteira, pc.Nome_Convenio,
@@ -33,7 +44,8 @@ app.get("/pacientes", (req, res) => {
     params = [`%${busca}%`, `%${busca}%`];
   }
 
-  sql += " ORDER BY p.Nome ASC";
+  // Insere a ordenação dinâmica
+  sql += ` ORDER BY ${colunaOrdenacao} ${direcaoOrdenacao}`;
 
   db.query(sql, params, (err, result) => {
     if (err) return res.status(500).send(err);
@@ -314,6 +326,43 @@ app.post("/consultas/finalizar/:id", (req, res) => {
       // Caso não tenha prescrição (só pagamento), finaliza aqui
       res.send({ msg: "Consulta finalizada (sem prescrições)!" });
     }
+  });
+});
+
+// --- RELATÓRIOS (SQL AVANÇADO) ---
+
+// 1. Relatório de Faturamento (GROUP BY + HAVING)
+app.get("/relatorios/faturamento", (req, res) => {
+  // Retorna métodos de pagamento que tiveram total maior que 0
+  const sql = `
+    SELECT Metodo, SUM(Valor) as Total
+    FROM PAGAMENTO
+    GROUP BY Metodo
+    HAVING Total > 0
+    ORDER BY Total DESC
+  `;
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send(result);
+  });
+});
+
+// 2. Relatório "Consultas VIP" (QUANTIFICADOR ALL)
+app.get("/relatorios/consultas-vip", (req, res) => {
+  // Retorna consultas cujo valor é MAIOR que TODOS os pagamentos feitos em 'Boleto'
+  // (Ou seja, consultas caras que superam qualquer boleto já pago)
+  const sql = `
+    SELECT c.Data_Hora, p.Nome as Paciente, pg.Valor
+    FROM CONSULTA c
+    JOIN PACIENTE p ON c.Paciente_ID = p.Paciente_ID
+    JOIN PAGAMENTO pg ON c.Consulta_ID = pg.Consulta_ID
+    WHERE pg.Valor > ALL (
+        SELECT Valor FROM PAGAMENTO WHERE Metodo = 'Boleto'
+    )
+  `;
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send(result);
   });
 });
 
